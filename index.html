@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>BILL GATES STOCK SIMULATOR 95</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .app-container { display: grid; grid-template-columns: 1fr 300px; gap: 20px; padding: 20px; flex-grow: 1; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; transition: transform 0.2s; }
+        .card:hover { border-color: #58a6ff; }
+        h3 { color: #58a6ff; margin-top: 0; }
+        .btn { background: #238636; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        .btn:hover { background: #2ea043; }
+        .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #30363d; }
+        #news { color: #3fb950; font-style: italic; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="card" id="game-box">
+        <h3>Live Market Data</h3>
+        <p>Portfolio Balance: <strong>$<span id="cash">25000</span></strong></p>
+        <div id="stocks"></div>
+        <div id="news"></div>
+    </div>
+    <div class="card" id="bill-box">
+        <h3>Bill Gates' Insight</h3>
+        <p id="bill-msg">"Buy low, sell high. Markets are just math, kid."</p>
+        <div id="challenges" style="border-top: 1px solid #30363d; padding-top: 10px;">
+            <strong>Bill's Challenges:</strong>
+            <div id="challenge-list" style="font-size: 12px; margin-top: 5px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const quotes = [
+        "Buy low, sell high. Markets are just math, kid.",
+        "Software is great, but dividends are better.",
+        "Don't bet against innovation.",
+        "Diversification is key to sleeping well at night.",
+        "I didn't become a billionaire by panic selling.",
+        "Market volatility is just opportunity in disguise.",
+        "Data doesn't lie, but traders do.",
+        "Success is a lousy teacher.",
+        "Patience is a key element of success.",
+        "It's fine to celebrate success, but it is more important to heed the lessons of failure."
+    ];
+    setInterval(() => {
+        document.getElementById('bill-msg').innerText = '"' + quotes[Math.floor(Math.random() * quotes.length)] + '"';
+    }, 10000);
+</script>
+
+<script>
+    let cash = 25000;
+    let days = 0;
+    const stockList = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "AMD", "INTC", "NFLX", "PLTR", "SSNLF", "BMWYY", "MBGAF", "VWAGY", "POAHY", "TM", "KO", "MCD", "NKE", "ADDYY", "DIS", "SPOT", "V", "MA", "JPM", "BRK-B", "PEP", "COST", "CSCO", "ORCL", "ADBE", "CRM", "TXN", "QCOM", "AVGO", "HON", "BA", "CAT", "GE", "MMM", "GS", "MS", "AXP", "BAC", "WFC", "BLK", "PFE", "JNJ", "UNH"];
+    const cryptoList = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB"];
+    let holdings = {};
+    let purchaseCount = {};
+    let billHoldings = {};
+    let billCash = 25000;
+    let stockData = {};
+    let marketTrend = 0;
+    let challenge = { goal: 5000, type: 'profit', current: 0, active: true };
+
+    [...stockList, ...cryptoList].forEach(s => { 
+        stockData[s] = { 
+            price: Math.random() * (cryptoList.includes(s) ? 60000 : 500) + (cryptoList.includes(s) ? 1 : 50), 
+            volatility: Math.random() * (cryptoList.includes(s) ? 0.1 : 0.05) + 0.01,
+            history: [100],
+            trades: []
+        };
+        holdings[s] = 0; 
+        purchaseCount[s] = 0;
+        billHoldings[s] = 0;
+    });
+
+    function filterStocks(query) {
+        document.querySelectorAll('.stock-row').forEach(row => {
+            row.style.display = row.id.toLowerCase().includes(query.toLowerCase()) ? 'flex' : 'none';
+        });
+    }
+
+    function initUI() {
+        let html = '<input type="text" placeholder="Suche..." onkeyup="filterStocks(this.value)" style="width:100%; margin-bottom:10px; background:#0d1117; color:white; border:1px solid #30363d; padding:5px;">';
+        for (let s in stockData) {
+            html += `<div class="stock-row" id="row-${s}">
+                <span>${s}</span>
+                <canvas id="chart-${s}" width="100" height="30"></canvas>
+                <span id="price-${s}">${stockData[s].price.toFixed(2)}$</span>
+                <div><button class="btn" onclick="buy('${s}')">+</button><button class="btn" onclick="sell('${s}')">-</button></div>
+            </div>`;
+        }
+        document.getElementById('stocks').innerHTML = html;
+        for (let s in stockData) {
+            stockData[s].chart = new Chart(document.getElementById(`chart-${s}`), { 
+                type: 'line', 
+                data: { labels: Array(20).fill(''), datasets: [{ data: stockData[s].history, borderColor: '#58a6ff', borderWidth: 1, pointRadius: 0, fill: false }] }, 
+                options: { responsive: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } 
+            });
+        }
+    }
+
+    function update() {
+        marketTrend += (Math.random() - 0.5) * 0.1;
+        marketTrend = Math.max(-1, Math.min(1, marketTrend));
+        let totalValue = cash;
+        for (let s in stockData) {
+            stockData[s].price = Math.max(1, stockData[s].price + (Math.random() - 0.5 + marketTrend) * stockData[s].volatility * stockData[s].price);
+            stockData[s].history.push(stockData[s].price);
+            if (stockData[s].history.length > 20) stockData[s].history.shift();
+            document.getElementById(`price-${s}`).innerText = stockData[s].price.toFixed(2) + "$";
+            stockData[s].chart.data.datasets[0].data = stockData[s].history;
+            stockData[s].chart.update('none');
+            totalValue += holdings[s] * stockData[s].price;
+        }
+        document.getElementById('cash').innerText = cash.toFixed(2);
+        
+        let profit = totalValue - 25000;
+        document.getElementById('challenge-list').innerText = `Ziel: Erreiche 5000$ Gewinn. Status: ${profit.toFixed(2)}$ / 5000$`;
+        
+        if(Math.random() < 0.05) document.getElementById('news').innerText = "BREAKING: " + ["Market Crash!", "Gates buys island!", "Apple stock rises!"][Math.floor(Math.random()*3)];
+    }
+
+    function buy(s) { 
+        if(cash >= stockData[s].price) { 
+            cash -= stockData[s].price; 
+            holdings[s]++; 
+            purchaseCount[s]++; 
+            stockData[s].trades.push(stockData[s].price);
+            document.getElementById(`holdings-${s}`).innerText = holdings[s]; 
+            document.getElementById(`count-${s}`).innerText = purchaseCount[s] + " Käufe"; 
+            updateStats(s);
+            update(); 
+        } 
+    }
+    function sell(s) { 
+        if(holdings[s] > 0) { 
+            cash += stockData[s].price; 
+            holdings[s]--; 
+            document.getElementById(`holdings-${s}`).innerText = holdings[s]; 
+            updateStats(s);
+            update(); 
+        } 
+    }
+
+    function updateStats(s) {
+        let avg = stockData[s].trades.length > 0 ? (stockData[s].trades.reduce((a,b) => a+b, 0) / stockData[s].trades.length).toFixed(2) : 0;
+        let profit = (stockData[s].price * holdings[s]) - (avg * holdings[s]);
+        document.getElementById(`stats-${s}`).innerHTML = `Ø: ${avg}$ | Gewinn: <span style="color:${profit>=0?'#3fb950':'#da3633'}">${profit.toFixed(2)}$</span>`;
+    }
+    initUI();
+    setInterval(update, 2000);
+</script>
+</body>
+</html>
