@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>BILL GATES STOCK SIMULATOR 95</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #0b0f19; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: #161b22; border-bottom: 1px solid #30363d; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .app-container { display: grid; grid-template-columns: 1fr 340px; gap: 15px; padding: 15px; flex-grow: 1; overflow: hidden; }
+        .main-col { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .sidebar { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; }
+        h3 { color: #58a6ff; margin-top: 0; margin-bottom: 10px; font-size: 16px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+        .btn { background: #238636; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .btn:hover { background: #2ea043; }
+        .btn-sell { background: #da3633; }
+        .btn-sell:hover { background: #f85149; }
+        .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 14px; }
+        .ticker { font-weight: bold; width: 60px; }
+        .price { width: 90px; text-align: right; }
+        #news-ticker { background: #1f242c; border-left: 4px solid #58a6ff; padding: 8px 12px; font-style: italic; font-size: 13px; margin-bottom: 10px; border-radius: 4px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+        .stat-box { background: #0d1117; padding: 8px; border-radius: 6px; border: 1px solid #30363d; }
+        .stat-val { font-size: 16px; font-weight: bold; color: #58a6ff; }
+        .stat-lbl { font-size: 11px; color: #8b949e; }
+        input, select { background: #0d1117; color: white; border: 1px solid #30363d; padding: 6px; border-radius: 6px; width: 100%; box-sizing: border-box; }
+        .badge { background: #388bfd22; color: #58a6ff; border: 1px solid #58a6ff44; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div><strong>BILL GATES STOCK SIMULATOR 95</strong> <span class="badge">PRO EDITION</span></div>
+    <div id="header-stats">Tag: <span id="day-count">1</span> | Level: <span id="player-level">1</span> (XP: <span id="player-xp">0</span>/<span id="player-next-xp">1000</span>)</div>
+    <div><button class="btn" onclick="resetGame()" style="background:#da3633;">Reset</button></div>
+</header>
+
+<div class="card" style="margin: 15px 15px 0 15px; padding: 10px 15px;">
+    <h3 style="margin-bottom: 8px;">Market Movers</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13px;">
+        <div><strong style="color: #3fb950;">Top 5 Gewinner:</strong> <span id="top-gainers">-</span></div>
+        <div><strong style="color: #da3633;">Top 5 Verlierer:</strong> <span id="top-losers">-</span></div>
+    </div>
+</div>
+
+<div class="app-container">
+    <div class="main-col">
+        <div id="news-ticker">Märkte öffnen. Bill Gates ist im Handel aktiv.</div>
+        
+        <div class="card">
+            <h3>Portfolio & Statistik</h3>
+            <div class="stat-grid" style="margin-bottom: 10px;">
+                <div class="stat-box"><div class="stat-val" id="cash">25000.00$</div><div class="stat-lbl">Bargeld</div></div>
+                <div class="stat-box"><div class="stat-val" id="portfolio-value">25000.00$</div><div class="stat-lbl">Depotwert</div></div>
+                <div class="stat-box"><div class="stat-val" id="total-net">25000.00$</div><div class="stat-lbl">Gesamtvermögen</div></div>
+            </div>
+            <div style="font-size: 13px; color: #8b949e; display: flex; justify-content: space-between;">
+                <span>Gesamtgewinn: <span id="total-profit" style="color: #3fb950;">0.00$</span></span>
+                <span>Gebühren gezahlt: <span id="total-fees">0.00$</span></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Marktübersicht</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="text" id="search-input" placeholder="Aktie oder Krypto suchen..." onkeyup="filterStocks()">
+                <select id="filter-type" onchange="filterStocks()" style="width: 150px;">
+                    <option value="all">Alle</option>
+                    <option value="stock">Aktien</option>
+                    <option value="crypto">Krypto</option>
+                </select>
+            </div>
+            <div id="stocks"></div>
+        </div>
+
+        <div class="card">
+            <h3>Dein Depot</h3>
+            <div id="holdings-list" style="font-size: 13px;">Keine Positionen.</div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="card">
+            <h3>Bill Gates KI-Konkurrent</h3>
+            <p id="bill-msg" style="font-style: italic; font-size: 13px; color: #8b949e;">"Kaufe das Fundament, halte die Vision."</p>
+            <div style="font-size: 13px; border-top: 1px solid #30363d; padding-top: 8px;">
+                <div>Vermögen: <strong id="bill-net">25000.00$</strong></div>
+                <div>Top Asset: <strong id="bill-top">-</strong></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Aktive Challenges</h3>
+            <div id="challenges-container" style="font-size: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+
+        <div class="card">
+            <h3>Rangliste</h3>
+            <div id="leaderboard" style="font-size: 13px; display: flex; flex-direction: column; gap: 5px;"></div>
+        </div>
+
+        <div class="card">
+            <h3>Erfolge (Achievements)</h3>
+            <div id="achievements-list" style="font-size: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; text-align: center;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cash = 25000, days = 1, totalFeesPaid = 0, xp = 0, level = 1;
+    let billCash = 25000, billHoldings = {};
+    let muskCash = 25000, muskHoldings = {};
+    let buffettCash = 25000, buffettHoldings = {};
+    let stockData = {}, holdings = {}, purchaseStats = {};
+    let marketTrend = 0, marketState = "Normal";
+    let challenges = [], achievements = [];
+
+    const stockList = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "AMD", "INTC", "NFLX", "PLTR", "BMWYY", "TM", "KO", "MCD", "NKE", "DIS", "V", "JPM", "PFE"];
+    const cryptoList = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB"];
+
+    const quotes = [
+        "Buy low, sell high. Markets are just math, kid.",
+        "Software is great, but dividends are better.",
+        "Don't bet against innovation.",
+        "Diversification is key to sleeping well at night.",
+        "I didn't become a billionaire by panic selling."
+    ];
+
+    const achievementDefs = [
+        { id: 'first_trade', title: 'Erster Handel', desc: 'Kaufe deine erste Aktie', unlocked: false },
+        { id: 'profit_1k', title: 'Gewinner', desc: 'Erreiche 1.000$ Gewinn', unlocked: false },
+        { id: 'crypto_lord', title: 'Krypto-Jünger', desc: 'Besitze Krypto im Wert von 10.000$', unlocked: false },
+        { id: 'level_5', title: 'Profi-Trader', desc: 'Erreiche Level 5', unlocked: false }
+    ];
+
+    const challengePool = [
+        { id: 1, title: 'Erster Gewinn', desc: 'Mache 500$ Gesamtgewinn', target: 500, type: 'profit', reward: 200, xp: 150, done: false },
+        { id: 2, title: 'Tech-Investor', desc: 'Besitze Aktien von AAPL, MSFT und NVDA', target: 3, type: 'tech_portfolio', reward: 500, xp: 300, done: false },
+        { id: 3, title: 'Krypto-Spekulant', desc: 'Kaufe 1 BTC', target: 1, type: 'btc', reward: 1000, xp: 500, done: false },
+        { id: 4, title: 'Vermögensaufbau', desc: 'Erreiche 35.000$ Gesamtvermögen', target: 35000, type: 'net', reward: 1500, xp: 800, done: false }
+    ];
+
+    function initGame() {
+        [...stockList, ...cryptoList].forEach(s => {
+            let isCrypto = cryptoList.includes(s);
+            stockData[s] = {
+                type: isCrypto ? 'crypto' : 'stock',
+                price: Math.random() * (isCrypto ? 50000 : 400) + (isCrypto ? 1000 : 20),
+                volatility: isCrypto ? 0.08 : 0.03,
+                history: [100],
+                trades: []
+            };
+            holdings[s] = 0;
+            purchaseStats[s] = { count: 0, totalCost: 0 };
+            billHoldings[s] = 0;
+        });
+        challenges = JSON.parse(JSON.stringify(challengePool));
+        achievements = JSON.parse(JSON.stringify(achievementDefs));
+        initUI();
+        loadGame();
+    }
+
+    function initUI() {
+        let html = '';
+        for (let s in stockData) {
+            html += `<div class="stock-row" data-symbol="${s}" data-type="${stockData[s].type}">
+                <span class="ticker">${s}</span>
+                <canvas id="chart-${s}" width="80" height="25"></canvas>
+                <span class="price" id="price-${s}">${stockData[s].price.toFixed(2)}$</span>
+                <div>
+                    <button class="btn" onclick="buy('${s}')">Kaufen</button>
+                    <button class="btn btn-sell" onclick="sell('${s}')">Verkaufen</button>
+                </div>
+            </div>`;
+        }
+        document.getElementById('stocks').innerHTML = html;
+        for (let s in stockData) {
+            stockData[s].chart = new Chart(document.getElementById(`chart-${s}`), {
+                type: 'line',
+                data: { labels: Array(15).fill(''), datasets: [{ data: stockData[s].history, borderColor: '#58a6ff', borderWidth: 1, pointRadius: 0, fill: false }] },
+                options: { responsive: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+            });
+        }
+        renderAchievements();
+    }
+
+    function filterStocks() {
+        let query = document.getElementById('search-input').value.toLowerCase();
+        let type = document.getElementById('filter-type').value;
+        document.querySelectorAll('.stock-row').forEach(row => {
+            let sym = row.getAttribute('data-symbol').toLowerCase();
+            let stype = row.getAttribute('data-type');
+            let matchQuery = sym.includes(query);
+            let matchType = (type === 'all' || stype === type);
+            row.style.display = (matchQuery && matchType) ? 'flex' : 'none';
+        });
+    }
+
+    function buy(s, qty = 1) {
+        if (!stockData[s]) return;
+        let cost = stockData[s].price * qty;
+        let fee = cost * 0.005;
+        let total = cost + fee;
+        if (cash >= total) {
+            cash -= total;
+            totalFeesPaid += fee;
+            holdings[s] = (holdings[s] || 0) + qty;
+            if (!purchaseStats[s]) purchaseStats[s] = { count: 0, totalCost: 0 };
+            purchaseStats[s].count += qty;
+            purchaseStats[s].totalCost += cost;
+            unlockAchievement('first_trade');
+            updateUI();
+            checkChallenges();
+            saveGame();
+        } else {
+            alert("Nicht genug Bargeld für diesen Kauf!");
+        }
+    }
+
+    function sell(s, qty = 1) {
+        if ((holdings[s] || 0) >= qty) {
+            let rev = stockData[s].price * qty;
+            let fee = rev * 0.005;
+            cash += (rev - fee);
+            totalFeesPaid += fee;
+            
+            let avgPrice = purchaseStats[s] && purchaseStats[s].count > 0 ? purchaseStats[s].totalCost / purchaseStats[s].count : stockData[s].price;
+            holdings[s] -= qty;
+            purchaseStats[s].count -= qty;
+            purchaseStats[s].totalCost -= avgPrice * qty;
+            if (purchaseStats[s].count <= 0) {
+                purchaseStats[s].count = 0;
+                purchaseStats[s].totalCost = 0;
+            }
+
+            updateUI();
+            checkChallenges();
+            saveGame();
+        }
+    }
+
+    function updateMarket() {
+        days++;
+        if (Math.random() < 0.1) {
+            let events = [
+                { name: "Markt-Boom! Kurse steigen rasant.", trend: 0.05, state: "Boom" },
+                { name: "Börsencrash! Panikverkäufe an den Märkten.", trend: -0.05, state: "Crash" },
+                { name: "Seitenwärtsphase an den Börsen.", trend: 0, state: "Normal" }
+            ];
+            let ev = events[Math.floor(Math.random() * events.length)];
+            marketTrend = ev.trend;
+            marketState = ev.state;
+            document.getElementById('news-ticker').innerText = "BREAKING: " + ev.name;
+        }
+
+        for (let s in stockData) {
+            let st = stockData[s];
+            let change = (Math.random() - 0.48 + marketTrend) * st.volatility * st.price;
+            st.price = Math.max(1, st.price + change);
+            st.history.push(st.price);
+            if (st.history.length > 15) st.history.shift();
+            st.chart.data.datasets[0].data = st.history;
+            st.chart.update('none');
+            document.getElementById(`price-${s}`).innerText = st.price.toFixed(2) + "$";
+        }
+
+        // KI Konkurrenten AI logic
+        [
+            { cash: 'billCash', holdings: billHoldings },
+            { cash: 'muskCash', holdings: muskHoldings },
+            { cash: 'buffettCash', holdings: buffettHoldings }
+        ].forEach(ai => {
+            let currentCash = eval(ai.cash);
+            if (Math.random() < 0.5 && currentCash > 1000) {
+                let randStock = [...stockList, ...cryptoList][Math.floor(Math.random() * (stockList.length + cryptoList.length))];
+                let bCost = stockData[randStock].price;
+                if (currentCash >= bCost) {
+                    eval(`${ai.cash} -= bCost`);
+                    ai.holdings[randStock] = (ai.holdings[randStock] || 0) + 1;
+                }
+            }
+        });
+
+        updateUI();
+        checkChallenges();
+        saveGame();
+    }
+
+    function updateUI() {
+        document.getElementById('day-count').innerText = days;
+        document.getElementById('player-level').innerText = level;
+        document.getElementById('player-xp').innerText = xp;
+        document.getElementById('player-next-xp').innerText = level * 1000;
+        document.getElementById('cash').innerText = cash.toFixed(2) + "$";
+
+        let portfolioValue = 0;
+        let holdingsHtml = '';
+        for (let s in holdings) {
+            let qty = holdings[s] || 0;
+            if (qty > 0) {
+                let val = qty * stockData[s].price;
+                let stats = purchaseStats[s] || { count: 0, totalCost: 0 };
+                let avgPrice = stats.count > 0 ? stats.totalCost / stats.count : stockData[s].price;
+                let profit = val - (avgPrice * qty);
+                portfolioValue += val;
+                holdingsHtml += `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #21262d;">
+                    <span><b>${s}</b> x${qty}</span>
+                    <span>Wert: ${val.toFixed(2)}$</span>
+                    <span style="color:${profit >= 0 ? '#3fb950' : '#da3633'}">Gewinn: ${profit.toFixed(2)}$</span>
+                    <div><button class="btn" onclick="buy('${s}')">+</button><button class="btn btn-sell" onclick="sell('${s}')">-</button></div>
+                </div>`;
+            }
+        }
+        document.getElementById('holdings-list').innerHTML = holdingsHtml || 'Keine Positionen.';
+
+        let totalNet = cash + portfolioValue;
+        let totalProfit = totalNet - 25000;
+        document.getElementById('portfolio-value').innerText = portfolioValue.toFixed(2) + "$";
+        document.getElementById('total-net').innerText = totalNet.toFixed(2) + "$";
+        document.getElementById('total-profit').innerText = totalProfit.toFixed(2) + "$";
+        document.getElementById('total-fees').innerText = totalFeesPaid.toFixed(2) + "$";
+
+        let billPortfolio = 0;
+        let billTop = '-';
+        let maxVal = 0;
+        for (let s in billHoldings) {
+            let bQty = billHoldings[s] || 0;
+            let v = bQty * stockData[s].price;
+            billPortfolio += v;
+            if (v > maxVal) { maxVal = v; billTop = s; }
+        }
+        let billTotalNet = billCash + billPortfolio;
+        document.getElementById('bill-net').innerText = billTotalNet.toFixed(2) + "$";
+        document.getElementById('bill-top').innerText = billTop !== '-' ? `${billTop} (${billHoldings[billTop]})` : '-';
+
+        let muskPortfolio = Object.keys(muskHoldings).reduce((acc, s) => acc + (muskHoldings[s] * stockData[s].price), 0);
+        let muskTotalNet = muskCash + muskPortfolio;
+
+        let buffettPortfolio = Object.keys(buffettHoldings).reduce((acc, s) => acc + (buffettHoldings[s] * stockData[s].price), 0);
+        let buffettTotalNet = buffettCash + buffettPortfolio;
+
+        let players = [
+            { name: "Du", net: totalNet },
+            { name: "Bill Gates", net: billTotalNet },
+            { name: "Elon Musk", net: muskTotalNet },
+            { name: "Warren Buffett", net: buffettTotalNet }
+        ];
+        players.sort((a, b) => b.net - a.net);
+
+        let rankHtml = '';
+        players.forEach((p, index) => {
+            rankHtml += `<div style="display:flex; justify-content:space-between;"><span>${index + 1}. ${p.name}</span> <strong>${p.net.toFixed(2)}$</strong></div>`;
+        });
+        document.getElementById('leaderboard').innerHTML = rankHtml;
+
+        if (totalProfit >= 1000) unlockAchievement('profit_1k');
+        let cryptoVal = 0;
+        cryptoList.forEach(c => cryptoVal += (holdings[c] || 0) * stockData[c].price);
+        if (cryptoVal >= 10000) unlockAchievement('crypto_lord');
+
+        let perfList = [];
+        for (let s in stockData) {
+            let hist = stockData[s].history;
+            if (hist.length > 1) {
+                let change = ((hist[hist.length - 1] - hist[0]) / hist[0]) * 100;
+                perfList.push({ symbol: s, price: stockData[s].price, change: change });
+            }
+        }
+        perfList.sort((a, b) => b.change - a.change);
+        let gainers = perfList.slice(0, 5).map(p => `${p.symbol} (<span style="color:#3fb950;">+${p.change.toFixed(1)}%</span>)`).join(', ');
+        let losers = perfList.slice(-5).reverse().map(p => `${p.symbol} (<span style="color:#da3633;">${p.change.toFixed(1)}%</span>)`).join(', ');
+        document.getElementById('top-gainers').innerHTML = gainers || '-';
+        document.getElementById('top-losers').innerHTML = losers || '-';
+    }
+
+    function addXP(amount) {
+        xp += amount;
+        if (xp >= level * 1000) {
+            xp -= level * 1000;
+            level++;
+            unlockAchievement('level_5');
+        }
+    }
+
+    function checkChallenges() {
+        let totalNet = cash + Object.keys(holdings).reduce((acc, s) => acc + (holdings[s] * stockData[s].price), 0);
+        let totalProfit = totalNet - 25000;
+        let html = '';
+        challenges.forEach(c => {
+            let progressDone = false;
+            if (c.type === 'profit' && totalProfit >= c.target) progressDone = true;
+            if (c.type === 'net' && totalNet >= c.target) progressDone = true;
+            if (c.type === 'btc' && holdings['BTC'] >= c.target) progressDone = true;
+            if (c.type === 'tech_portfolio' && holdings['AAPL'] > 0 && holdings['MSFT'] > 0 && holdings['NVDA'] > 0) progressDone = true;
+
+            if (progressDone && !c.done) {
+                c.done = true;
+                cash += c.reward;
+                addXP(c.xp);
+            }
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#0d1117; padding:6px; border-radius:4px;">
+                <span>${c.title}: ${c.desc}</span>
+                <span style="color:${c.done ? '#3fb950' : '#8b949e'}">${c.done ? '✓ Erledigt' : 'Offen'}</span>
+            </div>`;
+        });
+        document.getElementById('challenges-container').innerHTML = html;
+    }
+
+    function unlockAchievement(id) {
+        let ach = achievements.find(a => a.id === id);
+        if (ach && !ach.unlocked) {
+            ach.unlocked = true;
+            addXP(250);
+            renderAchievements();
+        }
+    }
+
+    function renderAchievements() {
+        let html = '';
+        achievements.forEach(a => {
+            html += `<div title="${a.title}: ${a.desc}" style="background:${a.unlocked ? '#23863622' : '#0d1117'}; border:1px solid ${a.unlocked ? '#238636' : '#30363d'}; padding:5px; border-radius:4px; font-size:10px; color:${a.unlocked ? '#3fb950' : '#8b949e'}">
+                ${a.title}
+            </div>`;
+        });
+        document.getElementById('achievements-list').innerHTML = html;
+    }
+
+    function saveGame() {
+        let state = { cash, days, totalFeesPaid, xp, level, holdings, purchaseStats, billCash, billHoldings, muskCash, muskHoldings, buffettCash, buffettHoldings, challenges, achievements };
+        localStorage.setItem('billGatesSim95', JSON.stringify(state));
+    }
+
+    function loadGame() {
+        let saved = localStorage.getItem('billGatesSim95');
+        if (saved) {
+            let data = JSON.parse(saved);
+            cash = data.cash;
+            days = data.days;
+            totalFeesPaid = data.totalFeesPaid;
+            xp = data.xp;
+            level = data.level;
+            holdings = data.holdings;
+            purchaseStats = data.purchaseStats;
+            billCash = data.billCash;
+            billHoldings = data.billHoldings;
+            muskCash = data.muskCash || 25000;
+            muskHoldings = data.muskHoldings || {};
+            buffettCash = data.buffettCash || 25000;
+            buffettHoldings = data.buffettHoldings || {};
+            challenges = data.challenges || challenges;
+            achievements = data.achievements || achievements;
+            updateUI();
+        }
+    }
+
+    function resetGame() {
+        localStorage.removeItem('billGatesSim95');
+        location.reload();
+    }
+
+    setInterval(() => {
+        document.getElementById('bill-msg').innerText = '"' + quotes[Math.floor(Math.random() * quotes.length)] + '"';
+    }, 12000);
+
+    initGame();
+    setInterval(updateMarket, 2500);
+</script>
+</body>
+</html>
